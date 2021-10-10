@@ -46,18 +46,15 @@ import java.util.function.Function;
 
 public class PlayersByServerComponentView extends PartitionedPlayersView {
 
+    protected final Map<String, ComponentView> emptySectionMap = new HashMap<>();
     private final Function<String, String> mergeSections;
     private final Set<String> hiddenServers;
     private final PlayersByServerComponentConfiguration.ServerOptions showServers;
     private final ContextAwareOrdering<Context, PlayerSetPartition, String> serverComparator;
-
     private final Set<String> persistentSections = new HashSet<>();
-    protected final Map<String, ComponentView> emptySectionMap = new HashMap<>();
-
-    private final Runnable onlineStateUpdateListener = this::updateOnlineServers;
-    private List<String> servers;
-
     private final boolean prioritizeViewerServer;
+    private List<String> servers;
+    private final Runnable onlineStateUpdateListener = this::updateOnlineServers;
 
     public PlayersByServerComponentView(int columns, PlayerSetTemplate playerSetTemplate, ComponentTemplate playerComponentTemplate, int playerComponentSize, ComponentTemplate morePlayerComponentTemplate, int morePlayerComponentSize, PlayerOrderTemplate playerOrderTemplate, TextTemplate defaultTextTemplate, PingTemplate defaultPingTemplate, IconTemplate defaultIconTemplate, ExpressionTemplate partitionFunction, Function<String, String> mergeSections, ComponentTemplate sectionHeader, ComponentTemplate sectionFooter, ComponentTemplate sectionSeparator, int minSizePerSection, int maxSizePerSection, SectionContextFactory sectionContextFactory, Set<String> hiddenServers, PlayersByServerComponentConfiguration.ServerOptions showServers, ContextAwareOrdering<Context, PlayerSetPartition, String> serverComparator, boolean prioritizeViewerServer) {
         super(columns, playerSetTemplate, playerComponentTemplate, playerComponentSize, morePlayerComponentTemplate, morePlayerComponentSize, playerOrderTemplate, defaultTextTemplate, defaultPingTemplate, defaultIconTemplate, ExpressionTemplates.applyStringToStringFunction(partitionFunction, mergeSections), sectionHeader, sectionFooter, sectionSeparator, minSizePerSection, maxSizePerSection, sectionContextFactory);

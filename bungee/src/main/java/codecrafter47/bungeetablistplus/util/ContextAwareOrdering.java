@@ -27,8 +27,6 @@ import java.util.List;
 
 public abstract class ContextAwareOrdering<C1, C2, T> {
 
-    public abstract int compare(C1 c1, C2 c2, T first, T second);
-
     public static <C1, C2, T> ContextAwareOrdering<C1, C2, T> from(Comparator<T> comparator) {
         return new ComparatorContextAwareOrdering<>(comparator);
     }
@@ -36,6 +34,8 @@ public abstract class ContextAwareOrdering<C1, C2, T> {
     public static <C1, C2, T> ContextAwareOrdering<C1, C2, T> compound(Iterable<ContextAwareOrdering<C1, C2, T>> comparators) {
         return new CompoundContextAwareOrdering<>(ImmutableList.copyOf(comparators));
     }
+
+    public abstract int compare(C1 c1, C2 c2, T first, T second);
 
     public List<T> immutableSortedCopy(C1 c1, C2 c2, Collection<T> elements) {
         return new Ordering<T>() {

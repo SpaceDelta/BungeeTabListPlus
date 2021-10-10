@@ -3,6 +3,7 @@ main : codecrafter47.bungeetablistplus.BungeePlugin
 version: ${version}
 author: CodeCrafter47
 softDepends:
+  - Tony # SpaceDelta
   - RedisBungee
   - ProtocolSupportBungee
   - BungeeOnlineTime

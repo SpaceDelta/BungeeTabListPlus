@@ -276,6 +276,14 @@ public class BungeeTabListPlus {
             playerProviders.add(redisPlayerManager);
             plugin.getLogger().info("Hooked RedisBungee");
         }
+        // Start SpaceDelta
+        if (plugin.getProxy().getPluginManager().getPlugin("Tony") != null) {
+            redisPlayerManager = new RedisPlayerManager(bungeePlayerProvider, this, getLogger());
+            playerProviders.add(redisPlayerManager);
+            plugin.getLogger().info("Hooked Big Man Tony");
+        }
+        // End SpaceDelta
+
         playerProviders.add(bungeePlayerProvider);
         playerProviders.add(fakePlayerManagerImpl);
         this.playerProvider = new JoinedPlayerProvider(playerProviders);

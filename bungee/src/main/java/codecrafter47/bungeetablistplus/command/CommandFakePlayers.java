@@ -41,6 +41,15 @@ public class CommandFakePlayers extends CommandExecutor {
         init();
     }
 
+    private static FakePlayerManagerImpl manager() {
+        return BungeeTabListPlus.getInstance().getFakePlayerManagerImpl();
+    }
+
+    private static ServerInfo randomServer() {
+        ArrayList<ServerInfo> servers = new ArrayList<>(ProxyServer.getInstance().getServers().values());
+        return servers.get(ThreadLocalRandom.current().nextInt(servers.size()));
+    }
+
     private void init() {
         addSubCommand(new CommandBase("add", null, this::commandAdd));
         addSubCommand(new CommandBase("remove", null, this::commandRemove));
@@ -109,14 +118,5 @@ public class CommandFakePlayers extends CommandExecutor {
         sender.sendMessage(ChatUtil.parseBBCode("&e[suggest]/btlp fake list[/suggest] &f&oShows a list of all fake players."));
         sender.sendMessage(ChatUtil.parseBBCode("&e[suggest]/btlp fake removeall[/suggest] &f&oRemoves all fake players."));
         sender.sendMessage(ChatUtil.parseBBCode("&e[suggest]/btlp fake help[/suggest] &f&oYou already found this one :P"));
-    }
-
-    private static FakePlayerManagerImpl manager() {
-        return BungeeTabListPlus.getInstance().getFakePlayerManagerImpl();
-    }
-
-    private static ServerInfo randomServer() {
-        ArrayList<ServerInfo> servers = new ArrayList<>(ProxyServer.getInstance().getServers().values());
-        return servers.get(ThreadLocalRandom.current().nextInt(servers.size()));
     }
 }

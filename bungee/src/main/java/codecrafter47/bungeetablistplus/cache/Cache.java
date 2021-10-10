@@ -34,6 +34,21 @@ public class Cache implements Serializable {
     private Map<String, List<String>> cachedCustomPlaceholdersBridge = new HashMap<>();
     private Map<String, List<String>> cachedCustomServerPlaceholdersBridge = new HashMap<>();
 
+    private Cache(File file) {
+        this.file = file;
+    }
+
+    public static Cache load(File file) {
+        try (FileInputStream is = new FileInputStream(file)) {
+            ObjectInputStream ois = new ObjectInputStream(is);
+            Cache cache = (Cache) ois.readObject();
+            cache.file = file;
+            return cache;
+        } catch (Throwable th) {
+            return new Cache(file);
+        }
+    }
+
     public synchronized void updatePAPIPrefixes(String server, List<String> prefixes) {
         cachedPAPIPrefixes.put(server, new ArrayList<>(prefixes));
     }
@@ -80,21 +95,6 @@ public class Cache implements Serializable {
                 .filter(Objects::nonNull)
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
-    }
-
-    private Cache(File file) {
-        this.file = file;
-    }
-
-    public static Cache load(File file) {
-        try (FileInputStream is = new FileInputStream(file)) {
-            ObjectInputStream ois = new ObjectInputStream(is);
-            Cache cache = (Cache) ois.readObject();
-            cache.file = file;
-            return cache;
-        } catch (Throwable th) {
-            return new Cache(file);
-        }
     }
 
     public synchronized void save() {

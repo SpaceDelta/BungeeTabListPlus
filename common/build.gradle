@@ -1,7 +1,23 @@
 
+repositories {
+    // SpaceDelta
+    maven {
+        credentials {
+            username sd_user
+            password sd_pass
+        }
+
+        url sd_repo
+        allowInsecureProtocol true
+    }
+}
+
+
 dependencies {
     api "de.codecrafter47.data:api:${rootProject.ext.dataApiVersion}"
     implementation "de.codecrafter47.data:minecraft:${rootProject.ext.dataApiVersion}"
     implementation "de.codecrafter47.data.bungee:api:${rootProject.ext.dataApiVersion}"
     compileOnly "com.google.guava:guava:18.0"
+    // SpaceDelta
+    compileOnly "net.spacedelta:sdtony:1.2.3-SNAPSHOT"
 }

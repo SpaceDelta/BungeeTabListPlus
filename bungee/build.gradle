@@ -3,6 +3,18 @@ repositories {
     maven {
         url = "https://repo.viaversion.com"
     }
+
+    // SpaceDelta
+    maven {
+        credentials {
+            username sd_user
+            password sd_pass
+        }
+
+        url sd_repo
+        allowInsecureProtocol true
+    }
+
 }
 
 dependencies {
@@ -32,6 +44,8 @@ dependencies {
     compileOnly "com.google.guava:guava:17.0"
     testImplementation "com.google.guava:guava:17.0"
     compileOnly "com.viaversion:viaversion-api:4.0.0"
+    // SpaceDelta
+    compileOnly "net.spacedelta:sdtony:1.2.3-SNAPSHOT"
 }
 
 processResources {

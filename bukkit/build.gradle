@@ -1,4 +1,3 @@
-
 dependencies {
     implementation "de.codecrafter47.data:api:${rootProject.ext.dataApiVersion}"
     implementation "de.codecrafter47.data.bukkit:api:${rootProject.ext.dataApiVersion}"

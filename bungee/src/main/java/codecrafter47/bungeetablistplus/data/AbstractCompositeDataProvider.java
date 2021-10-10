@@ -43,6 +43,12 @@ public abstract class AbstractCompositeDataProvider<T> {
 
     protected abstract T computeCompositeData(BungeePlayer player, DataKey<T> key);
 
+    @Value
+    private static class CompositeKey {
+        BungeePlayer player;
+        DataKey<?> dataKey;
+    }
+
     protected class PlayerDataListener implements Runnable {
         private final BungeePlayer player;
         private final DataKey<T> dataKey;
@@ -56,11 +62,5 @@ public abstract class AbstractCompositeDataProvider<T> {
         public void run() {
             player.getLocalDataCache().updateValue(dataKey, computeCompositeData(player, dataKey));
         }
-    }
-
-    @Value
-    private static class CompositeKey {
-        BungeePlayer player;
-        DataKey<?> dataKey;
     }
 }

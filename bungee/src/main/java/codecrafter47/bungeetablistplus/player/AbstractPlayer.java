@@ -33,15 +33,25 @@ import java.util.UUID;
 import java.util.function.Function;
 
 public abstract class AbstractPlayer implements Player {
+    final DataHolder serverData;
     private final UUID uuid;
     private final String name;
-
-    final DataHolder serverData;
 
     AbstractPlayer(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
         this.serverData = new ServerDataHolder(AbstractPlayer::getServerDataHolder);
+    }
+
+    private static DataHolder getServerDataHolder(String server) {
+        DataHolder serverDataHolder = null;
+        if (server != null) {
+            serverDataHolder = BungeeTabListPlus.getInstance().getDataManager().getServerDataHolder(server);
+        }
+        if (serverDataHolder == null) {
+            serverDataHolder = NullDataHolder.INSTANCE;
+        }
+        return serverDataHolder;
     }
 
     @Nonnull
@@ -71,6 +81,13 @@ public abstract class AbstractPlayer implements Player {
     @Override
     public final <T> void removeDataChangeListener(DataKey<T> key, Runnable listener) {
         getResponsibleDataHolder(key).removeDataChangeListener(key, listener);
+    }
+
+    @Value
+    private static class ListenerKey {
+        private AbstractPlayer player;
+        private DataKey<?> dataKey;
+        private Runnable listener;
     }
 
     private class ServerDataHolder implements DataHolder {
@@ -153,23 +170,5 @@ public abstract class AbstractPlayer implements Player {
             AbstractPlayer.this.removeDataChangeListener(BungeeData.BungeeCord_Server, this);
             activeDataHolder.removeDataChangeListener(dataKey, delegate);
         }
-    }
-
-    @Value
-    private static class ListenerKey {
-        private AbstractPlayer player;
-        private DataKey<?> dataKey;
-        private Runnable listener;
-    }
-
-    private static DataHolder getServerDataHolder(String server) {
-        DataHolder serverDataHolder = null;
-        if (server != null) {
-            serverDataHolder = BungeeTabListPlus.getInstance().getDataManager().getServerDataHolder(server);
-        }
-        if (serverDataHolder == null) {
-            serverDataHolder = NullDataHolder.INSTANCE;
-        }
-        return serverDataHolder;
     }
 }

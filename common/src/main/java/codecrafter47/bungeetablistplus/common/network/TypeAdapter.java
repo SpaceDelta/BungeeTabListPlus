@@ -17,6 +17,8 @@
 
 package codecrafter47.bungeetablistplus.common.network;
 
+import net.spacedelta.lib.data.DataBuffer;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;

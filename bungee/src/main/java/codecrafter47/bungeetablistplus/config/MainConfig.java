@@ -87,11 +87,6 @@ public class MainConfig implements UpdateableConfig {
 
     @Comment("Custom placeholders")
     public Map<String, CustomPlaceholderConfiguration> customPlaceholders = new HashMap<>();
-
-    public TimeZone getTimeZone() {
-        return TimeZone.getTimeZone(time_zone);
-    }
-
     @Comment({
             "Disables the custom tab list for players in spectators mode.",
             "As a result those players will see the vanilla tab list of the server.",
@@ -99,19 +94,24 @@ public class MainConfig implements UpdateableConfig {
             "fake players created by BungeeTabListPlus in the teleport menu."
     })
     public boolean disableCustomTabListForSpectators = true;
-
     @Comment({
             "Removes the `~BTLP Slot ##` entries from tab completion if the.",
             "size of the tab list is 80 slots."
     })
     public boolean experimentalTabCompleteFixForTabSize80 = false;
-
     @Comment({
             "Replaces the `~BTLP Slot ##` entries in tab completion with smileys"
     })
     public boolean experimentalTabCompleteSmileys = false;
-
     public transient boolean needWrite = false;
+
+    private static void writeCommentLine(Writer writer, String comment) throws IOException {
+        writer.write("# " + comment + "\n");
+    }
+
+    public TimeZone getTimeZone() {
+        return TimeZone.getTimeZone(time_zone);
+    }
 
     @Override
     public void update(MappingNode node) {
@@ -195,9 +195,5 @@ public class MainConfig implements UpdateableConfig {
         }
 
         writer.close();
-    }
-
-    private static void writeCommentLine(Writer writer, String comment) throws IOException {
-        writer.write("# " + comment + "\n");
     }
 }

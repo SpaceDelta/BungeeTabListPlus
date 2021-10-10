@@ -43,6 +43,10 @@ public class CommandExecutor extends Command implements TabExecutor {
         super(name, permission, aliases);
     }
 
+    private static boolean checkPermission(CommandSender sender, Command command) {
+        return sender.hasPermission(command.getPermission());
+    }
+
     public void addSubCommand(Command command) {
         subCommands.put(command.getName(), command);
         for (String alias : command.getAliases()) {
@@ -85,9 +89,5 @@ public class CommandExecutor extends Command implements TabExecutor {
             }
         }
         return Collections.emptyList();
-    }
-
-    private static boolean checkPermission(CommandSender sender, Command command) {
-        return sender.hasPermission(command.getPermission());
     }
 }

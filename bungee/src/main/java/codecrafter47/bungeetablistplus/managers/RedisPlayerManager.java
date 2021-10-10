@@ -29,8 +29,6 @@ import com.google.common.collect.Sets;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import com.imaginarycode.minecraft.redisbungee.RedisBungee;
-import com.imaginarycode.minecraft.redisbungee.events.PubSubMessageEvent;
 import de.codecrafter47.data.api.DataCache;
 import de.codecrafter47.data.api.DataKey;
 import de.codecrafter47.data.api.DataKeyRegistry;
@@ -41,17 +39,17 @@ import de.codecrafter47.data.sponge.api.SpongeData;
 import de.codecrafter47.taboverlay.config.player.Player;
 import de.codecrafter47.taboverlay.config.player.PlayerProvider;
 import io.netty.util.concurrent.EventExecutor;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Listener;
-import net.md_5.bungee.event.EventHandler;
+import net.spacedelta.lib.data.DataBuffer;
+import net.spacedelta.sdlib.network.data.updater.PlayerDataServiceImpl;
+import net.spacedelta.tony.TonyPlugin;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -70,10 +68,12 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             BTLPDataKeys.class,
             BTLPBungeeDataKeys.class);
 
-    private static String CHANNEL_REQUEST_DATA_OLD = "btlp-data-request";
-    private static String CHANNEL_DATA_OLD = "btlp-data";
-    private static String CHANNEL_DATA_REQUEST = "btlp-data-req";
-    private static String CHANNEL_DATA_UPDATE = "btlp-data-upd";
+    // private static String CHANNEL_REQUEST_DATA_OLD = "btlp-data-request"; // SpaceDelta
+    // private static String CHANNEL_DATA_OLD = "btlp-data"; // SpaceDelta
+    private static final String CHANNEL_DATA_REQUEST = "btlp-data-req";
+    private static final String CHANNEL_DATA_UPDATE = "btlp-data-upd";
+
+    private String thisServerId = TonyPlugin.INSTANCE.getLibrary().getEnvironment().getInstanceId(); // SpaceDelta
 
     private final Map<UUID, RedisPlayer> byUUID = new ConcurrentHashMap<>();
     private final BungeePlayerProvider bungeePlayerProvider;
@@ -81,11 +81,7 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
     private final EventExecutor mainThread;
     private final Logger logger;
     private final Set<Listener> listeners = new ReferenceOpenHashSet<>();
-
-    private boolean redisBungeeAPIError = false;
-
     private final Consumer<String> missingDataKeyLogger = new Consumer<String>() {
-
         private final Set<String> missingKeys = Sets.newConcurrentHashSet();
 
         @Override
@@ -95,8 +91,9 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             }
         }
     };
+    private boolean redisBungeeAPIError = false;
 
-    private boolean redisConnectionSuccessful = false;
+    // private boolean redisConnectionSuccessful = false; // SpaceDelta
 
     public RedisPlayerManager(BungeePlayerProvider bungeePlayerProvider, BungeeTabListPlus plugin, Logger logger) {
         this.bungeePlayerProvider = bungeePlayerProvider;
@@ -104,12 +101,16 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
         this.logger = logger;
         this.mainThread = plugin.getMainThreadExecutor();
 
-        RedisBungee.getApi().registerPubSubChannels(CHANNEL_REQUEST_DATA_OLD, CHANNEL_DATA_OLD);
-        RedisBungee.getApi().registerPubSubChannels(CHANNEL_DATA_REQUEST, CHANNEL_DATA_UPDATE);
+        // RedisBungee.getApi().registerPubSubChannels(CHANNEL_REQUEST_DATA_OLD, CHANNEL_DATA_OLD); // SpaceDelta
+        // RedisBungee.getApi().registerPubSubChannels(CHANNEL_DATA_REQUEST, CHANNEL_DATA_UPDATE);
 
-        ProxyServer.getInstance().getScheduler().schedule(BungeeTabListPlus.getInstance().getPlugin(), this::updatePlayers, 5, 5, TimeUnit.SECONDS);
+        // ProxyServer.getInstance().getScheduler().schedule(BungeeTabListPlus.getInstance().getPlugin(), this::updatePlayers, 5, 5, TimeUnit.SECONDS);
+        // ProxyServer.getInstance().getPluginManager().registerListener(BungeeTabListPlus.getInstance().getPlugin(), this);
 
-        ProxyServer.getInstance().getPluginManager().registerListener(BungeeTabListPlus.getInstance().getPlugin(), this);
+        // SpaceDelta
+        registerJoinLeaveChannels();
+        registerDataIn();
+        registerDataOut();
     }
 
     @Override
@@ -117,6 +118,156 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
         return byUUID.values();
     }
 
+    // SpaceDelta
+    private void registerJoinLeaveChannels() {
+        TonyPlugin.INSTANCE.getLibrary().getMessageBus().registerHandler(
+                "sdlib",
+                PlayerDataServiceImpl.UPDATER_CHANNEL,
+                dataBuffer -> {
+                    if (dataBuffer.readString("origin").equals(thisServerId))
+                        return;
+
+                    final PlayerDataServiceImpl.PlayerUpdateType type =
+                            PlayerDataServiceImpl.PlayerUpdateType.fromId(dataBuffer.readNumber(PlayerDataServiceImpl.ID_TYPE).intValue());
+
+                    switch (type) {
+                        case GROUP_SWITCH:
+                            dataBuffer.readOptionalString("from")
+                                    .ifPresentOrElse(present -> {
+                                    }, () -> {
+                                        // join
+                                        RedisPlayer redisPlayer = new RedisPlayer(
+                                                UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)),
+                                                dataBuffer.readString(PlayerDataServiceImpl.ID_NAME)
+                                        );
+
+                                        byUUID.put(redisPlayer.getUniqueID(), redisPlayer);
+                                        listeners.forEach(listener -> listener.onPlayerAdded(redisPlayer));
+                                    });
+                            break;
+                        case NETWORK_LEAVE:
+                            final RedisPlayer redisPlayer = byUUID.get(UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)));
+                            listeners.forEach(listener -> listener.onPlayerRemoved(redisPlayer));
+                            break;
+
+                    }
+
+                });
+    }
+
+    private void registerDataIn() {
+        TonyPlugin.INSTANCE.getLibrary().getMessageBus().registerHandler(
+                "btlp",
+                CHANNEL_DATA_REQUEST,
+                dataBuffer -> {
+                    if (dataBuffer.readString("origin").equals(thisServerId))
+                        return;
+
+                    ByteArrayDataInput input = ByteStreams.newDataInput(Base64.getDecoder().decode(dataBuffer.readString("message")));
+                    try {
+                        UUID uuid = DataStreamUtils.readUUID(input);
+
+                        ProxiedPlayer proxiedPlayer = ProxyServer.getInstance().getPlayer(uuid);
+                        if (proxiedPlayer != null) {
+                            BungeePlayer player = bungeePlayerProvider.getPlayerIfPresent(proxiedPlayer);
+                            if (player != null) {
+                                DataKey<?> key = DataStreamUtils.readDataKey(input, keyRegistry, missingDataKeyLogger);
+
+                                if (key != null) {
+                                    player.addDataChangeListener((DataKey<Object>) key, new DataChangeListener(player, (DataKey<Object>) key));
+                                    updateData(uuid, (DataKey<Object>) key, player.get(key));
+                                }
+
+                            }
+                        }
+                    } catch (IOException ex) {
+                        logger.log(Level.SEVERE, "Unexpected error reading redis message", ex);
+                    }
+
+                    /*
+                    try {
+                        UUID uuid = DataBufferUtils.readUUID(dataBuffer);
+
+                        ProxiedPlayer proxiedPlayer = ProxyServer.getInstance().getPlayer(uuid);
+                        if (proxiedPlayer != null) {
+                            BungeePlayer player = bungeePlayerProvider.getPlayerIfPresent(proxiedPlayer);
+                            if (player != null) {
+                                DataKey<?> key = DataBufferUtils.readDataKey(dataBuffer, keyRegistry, missingDataKeyLogger);
+
+                                if (key != null) {
+                                    player.addDataChangeListener(key, new DataChangeListener(player, (DataKey<Object>) key));
+                                    updateData(uuid, (DataKey<Object>) key, player.get(key));
+                                }
+
+                            }
+                        }
+                    } catch (IOException ex) {
+                        logger.log(Level.SEVERE, "Unexpected error reading redis message", ex);
+                    }
+
+                     */
+                });
+    }
+
+    private void registerDataOut() {
+        TonyPlugin.INSTANCE.getLibrary().getMessageBus().registerHandler(
+                "btlp",
+                CHANNEL_DATA_UPDATE,
+                dataBuffer -> {
+                    ByteArrayDataInput input = ByteStreams.newDataInput(Base64.getDecoder().decode(dataBuffer.readString("message")));
+                    try {
+                        UUID uuid = DataStreamUtils.readUUID(input);
+
+                        RedisPlayer player = byUUID.get(uuid);
+                        if (player != null) {
+                            DataCache cache = player.getData();
+                            DataKey<?> key = DataStreamUtils.readDataKey(input, keyRegistry, missingDataKeyLogger);
+
+                            if (key != null) {
+                                boolean removed = input.readBoolean();
+
+                                if (removed) {
+
+                                    mainThread.execute(() -> cache.updateValue(key, null));
+                                } else {
+
+                                    Object value = typeRegistry.getTypeAdapter(key.getType()).read(input);
+                                    mainThread.execute(() -> cache.updateValue((DataKey<Object>) key, value));
+                                }
+                            }
+                        }
+                    } catch (IOException ex) {
+                        logger.log(Level.SEVERE, "Unexpected error reading redis message", ex);
+                    }
+
+                        /*
+                        UUID uuid = DataBufferUtils.readUUID(dataBuffer);
+
+                        RedisPlayer player = byUUID.get(uuid);
+                        if (player != null) {
+                            DataCache cache = player.getData();
+                            DataKey<?> key = DataBufferUtils.readDataKey(dataBuffer, keyRegistry, missingDataKeyLogger);
+
+                            if (key != null) {
+                                boolean removed = input.readBoolean();
+
+                                if (removed) {
+                                    mainThread.execute(() -> cache.updateValue(key, null));
+                                } else {
+                                    Object value = typeRegistry.getTypeAdapter(key.getType()).read(input);
+                                    mainThread.execute(() -> cache.updateValue((DataKey<Object>) key, value));
+                                }
+                            }
+                        }
+                    } catch (IOException ex) {
+                        logger.log(Level.SEVERE, "Unexpected error reading redis message", ex);
+                    }
+
+                         */
+                });
+    }
+
+    /* SpaceDelta
     @EventHandler
     @SuppressWarnings("unchecked")
     public void onRedisMessage(PubSubMessageEvent event) {
@@ -172,8 +323,10 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             logger.warning("BungeeTabListPlus on at least one proxy in your network is outdated.");
         }
     }
+     */
 
     private void updatePlayers() {
+        /* SpaceDelta
         Set<UUID> playersOnline;
         try {
             playersOnline = RedisBungee.getApi().getPlayersOnline();
@@ -200,6 +353,9 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
 
         redisConnectionSuccessful = true;
 
+    });
+
+        /*
         try {
             mainThread.submit(() -> {
                 // remove players which have gone offline
@@ -223,6 +379,8 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             }).sync();
         } catch (InterruptedException ignored) {
         }
+
+         */
     }
 
     @Override
@@ -240,7 +398,16 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             ByteArrayDataOutput data = ByteStreams.newDataOutput();
             DataStreamUtils.writeUUID(data, uuid);
             DataStreamUtils.writeDataKey(data, key);
-            RedisBungee.getApi().sendChannelMessage(CHANNEL_DATA_REQUEST, Base64.getEncoder().encodeToString(data.toByteArray()));
+
+            // SpaceDelta
+            TonyPlugin.INSTANCE.getLibrary().getMessageBus().fire(
+                    "btlp",
+                    CHANNEL_DATA_REQUEST,
+                    DataBuffer.create()
+                            .write("message", Base64.getEncoder().encodeToString(data.toByteArray())
+                            ));
+
+            // RedisBungee.getApi().sendChannelMessage(CHANNEL_DATA_REQUEST, Base64.getEncoder().encodeToString(data.toByteArray());
             redisBungeeAPIError = false;
         } catch (RuntimeException ex) {
             if (!redisBungeeAPIError) {
@@ -261,7 +428,13 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             if (value != null) {
                 typeRegistry.getTypeAdapter(key.getType()).write(data, value);
             }
-            RedisBungee.getApi().sendChannelMessage(CHANNEL_DATA_UPDATE, Base64.getEncoder().encodeToString(data.toByteArray()));
+            TonyPlugin.INSTANCE.getLibrary().getMessageBus().fire(
+                    "btlp",
+                    CHANNEL_DATA_UPDATE,
+                    DataBuffer.create()
+                            .write("message", Base64.getEncoder().encodeToString(data.toByteArray()))
+            );
+            // RedisBungee.getApi().sendChannelMessage(CHANNEL_DATA_UPDATE, Base64.getEncoder().encodeToString(data.toByteArray()))
         } catch (RuntimeException ex) {
             BungeeTabListPlus.getInstance().getLogger().log(Level.WARNING, "RedisBungee Error", ex);
         } catch (Throwable th) {
@@ -301,4 +474,5 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
             RedisPlayerManager.this.updateData(player.getUniqueID(), dataKey, player.get(dataKey));
         }
     }
+
 }

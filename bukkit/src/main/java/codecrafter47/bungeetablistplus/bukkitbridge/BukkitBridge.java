@@ -71,15 +71,12 @@ public class BukkitBridge extends BungeeTabListPlusBukkitAPI implements Listener
     private static final RateLimitedExecutor rlExecutor = new RateLimitedExecutor(5000);
 
     private final Plugin plugin;
-
-    private PlaceholderAPIHook placeholderAPIHook = null;
-
     private final ReadWriteLock apiLock = new ReentrantReadWriteLock();
     private final Map<String, Variable> variablesByName = new HashMap<>();
     private final Multimap<Plugin, Variable> variablesByPlugin = HashMultimap.create();
     private final Map<String, ServerVariable> serverVariablesByName = new HashMap<>();
     private final Multimap<Plugin, ServerVariable> serverVariablesByPlugin = HashMultimap.create();
-
+    private PlaceholderAPIHook placeholderAPIHook = null;
     private Bridge bridge;
 
     public BukkitBridge(Plugin plugin) {

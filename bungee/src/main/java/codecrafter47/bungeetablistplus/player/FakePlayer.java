@@ -38,11 +38,9 @@ import java.util.UUID;
 
 public class FakePlayer extends AbstractPlayer implements codecrafter47.bungeetablistplus.api.bungee.tablist.FakePlayer {
 
-    private boolean randomServerSwitchEnabled;
-
     final DataCache data = new DataCache();
-
     private final EventExecutor mainThread;
+    private boolean randomServerSwitchEnabled;
 
     public FakePlayer(String name, ServerInfo server, boolean randomServerSwitchEnabled, EventExecutor mainThread) {
         super(UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(Charsets.UTF_8)), name);
@@ -63,11 +61,6 @@ public class FakePlayer extends AbstractPlayer implements codecrafter47.bungeeta
     }
 
     @Override
-    public Icon getIcon() {
-        return IconUtil.convert(data.get(BTLPBungeeDataKeys.DATA_KEY_ICON));
-    }
-
-    @Override
     @SneakyThrows
     public void setPing(int ping) {
         if (!mainThread.inEventLoop()) {
@@ -75,6 +68,28 @@ public class FakePlayer extends AbstractPlayer implements codecrafter47.bungeeta
             return;
         }
         data.updateValue(BungeeData.BungeeCord_Ping, ping);
+    }
+
+    @Override
+    public Icon getIcon() {
+        return IconUtil.convert(data.get(BTLPBungeeDataKeys.DATA_KEY_ICON));
+    }
+
+    @Override
+    @SneakyThrows
+    @SuppressWarnings("deprecation")
+    public void setIcon(Icon icon) {
+        setIcon(IconUtil.convert(icon));
+    }
+
+    @Override
+    @SneakyThrows
+    public void setIcon(de.codecrafter47.taboverlay.Icon icon) {
+        if (!mainThread.inEventLoop()) {
+            mainThread.submit(() -> setIcon(icon)).sync();
+            return;
+        }
+        data.updateValue(BTLPBungeeDataKeys.DATA_KEY_ICON, icon);
     }
 
     @Override
@@ -95,23 +110,6 @@ public class FakePlayer extends AbstractPlayer implements codecrafter47.bungeeta
             return;
         }
         data.updateValue(BungeeData.BungeeCord_Server, newServer.getName());
-    }
-
-    @Override
-    @SneakyThrows
-    @SuppressWarnings("deprecation")
-    public void setIcon(Icon icon) {
-        setIcon(IconUtil.convert(icon));
-    }
-
-    @Override
-    @SneakyThrows
-    public void setIcon(de.codecrafter47.taboverlay.Icon icon) {
-        if (!mainThread.inEventLoop()) {
-            mainThread.submit(() -> setIcon(icon)).sync();
-            return;
-        }
-        data.updateValue(BTLPBungeeDataKeys.DATA_KEY_ICON, icon);
     }
 
     @Override

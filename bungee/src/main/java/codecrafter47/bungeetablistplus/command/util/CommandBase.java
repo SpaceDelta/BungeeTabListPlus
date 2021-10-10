@@ -37,11 +37,6 @@ public class CommandBase extends Command {
         this.action = action;
     }
 
-    @Override
-    public void execute(CommandSender sender, String[] args) {
-        action.accept(sender, args);
-    }
-
     public static Consumer<CommandSender> playerCommand(Consumer<ProxiedPlayer> cmd) {
         return sender -> {
             if (sender instanceof ProxiedPlayer) {
@@ -50,5 +45,10 @@ public class CommandBase extends Command {
                 sender.sendMessage(ChatUtil.parseBBCode("&cThis command can only be used ingame."));
             }
         };
+    }
+
+    @Override
+    public void execute(CommandSender sender, String[] args) {
+        action.accept(sender, args);
     }
 }

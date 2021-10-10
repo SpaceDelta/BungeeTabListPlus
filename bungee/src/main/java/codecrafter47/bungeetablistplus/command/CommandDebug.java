@@ -25,7 +25,6 @@ import codecrafter47.bungeetablistplus.player.BungeePlayer;
 import codecrafter47.bungeetablistplus.util.ReflectionUtil;
 import codecrafter47.util.chat.ChatUtil;
 import com.google.common.base.Joiner;
-import de.codecrafter47.data.minecraft.api.MinecraftData;
 import io.netty.channel.ChannelHandler;
 import lombok.SneakyThrows;
 import lombok.val;

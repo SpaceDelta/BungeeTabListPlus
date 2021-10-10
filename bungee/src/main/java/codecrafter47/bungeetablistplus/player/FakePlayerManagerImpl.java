@@ -35,15 +35,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 public class FakePlayerManagerImpl implements FakePlayerManager, PlayerProvider {
-    private List<FakePlayer> online = new ArrayList<>();
-    private List<String> offline;
-    private boolean randomJoinLeaveEventsEnabled;
-
     private final Set<Listener> listeners = new ReferenceOpenHashSet<>();
-
     private final Plugin plugin;
     private final IconManager iconManager;
     private final EventExecutor mainThread;
+    private List<FakePlayer> online = new ArrayList<>();
+    private List<String> offline;
+    private boolean randomJoinLeaveEventsEnabled;
 
     public FakePlayerManagerImpl(final Plugin plugin, IconManager iconManager, EventExecutor mainThread) {
         this.plugin = plugin;
@@ -58,6 +56,11 @@ public class FakePlayerManagerImpl implements FakePlayerManager, PlayerProvider 
             offline = new ArrayList<>();
         }
         mainThread.scheduleAtFixedRate(this::triggerRandomEvent, 10, 10, TimeUnit.SECONDS);
+    }
+
+    private static ServerInfo getRandomServer() {
+        ArrayList<ServerInfo> servers = new ArrayList<>(ProxyServer.getInstance().getServers().values());
+        return servers.get((int) (Math.random() * servers.size()));
     }
 
     private void triggerRandomEvent() {
@@ -84,11 +87,6 @@ public class FakePlayerManagerImpl implements FakePlayerManager, PlayerProvider 
         } catch (Throwable th) {
             plugin.getLogger().log(Level.SEVERE, "An error occurred while processing random fake player events", th);
         }
-    }
-
-    private static ServerInfo getRandomServer() {
-        ArrayList<ServerInfo> servers = new ArrayList<>(ProxyServer.getInstance().getServers().values());
-        return servers.get((int) (Math.random() * servers.size()));
     }
 
     public void removeConfigFakePlayers() {
