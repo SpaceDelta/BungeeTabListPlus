@@ -73,7 +73,7 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
     private static final String CHANNEL_DATA_REQUEST = "btlp-data-req";
     private static final String CHANNEL_DATA_UPDATE = "btlp-data-upd";
 
-    private String thisServerId = TonyPlugin.INSTANCE.getLibrary().getEnvironment().getInstanceId(); // SpaceDelta
+    private final String thisServerId = TonyPlugin.INSTANCE.getLibrary().getEnvironment().getInstanceId(); // SpaceDelta
 
     private final Map<UUID, RedisPlayer> byUUID = new ConcurrentHashMap<>();
     private final BungeePlayerProvider bungeePlayerProvider;
@@ -127,25 +127,22 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                     if (dataBuffer.readString("origin").equals(thisServerId))
                         return;
 
-                    final PlayerDataServiceImpl.PlayerUpdateType type =
-                            PlayerDataServiceImpl.PlayerUpdateType.fromId(dataBuffer.readNumber(PlayerDataServiceImpl.ID_TYPE).intValue());
+                    final int type = dataBuffer.readNumber(PlayerDataServiceImpl.ID_TYPE).intValue();
 
                     switch (type) {
-                        case GROUP_SWITCH:
-                            dataBuffer.readOptionalString("from")
-                                    .ifPresentOrElse(present -> {
-                                    }, () -> {
-                                        // join
-                                        RedisPlayer redisPlayer = new RedisPlayer(
-                                                UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)),
-                                                dataBuffer.readString(PlayerDataServiceImpl.ID_NAME)
-                                        );
+                        case 1: // group_switch
+                            if (dataBuffer.readOptionalString("from").isEmpty()) {
+                                // join
+                                RedisPlayer redisPlayer = new RedisPlayer(
+                                        UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)),
+                                        dataBuffer.readString(PlayerDataServiceImpl.ID_NAME)
+                                );
 
-                                        byUUID.put(redisPlayer.getUniqueID(), redisPlayer);
-                                        listeners.forEach(listener -> listener.onPlayerAdded(redisPlayer));
-                                    });
+                                byUUID.put(redisPlayer.getUniqueID(), redisPlayer);
+                                listeners.forEach(listener -> listener.onPlayerAdded(redisPlayer));
+                            }
                             break;
-                        case NETWORK_LEAVE:
+                        case 2: // net leave
                             final RedisPlayer redisPlayer = byUUID.get(UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)));
                             listeners.forEach(listener -> listener.onPlayerRemoved(redisPlayer));
                             break;
@@ -174,7 +171,7 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                                 DataKey<?> key = DataStreamUtils.readDataKey(input, keyRegistry, missingDataKeyLogger);
 
                                 if (key != null) {
-                                    player.addDataChangeListener((DataKey<Object>) key, new DataChangeListener(player, (DataKey<Object>) key));
+                                    player.addDataChangeListener(key, new DataChangeListener(player, (DataKey<Object>) key));
                                     updateData(uuid, (DataKey<Object>) key, player.get(key));
                                 }
 
@@ -227,10 +224,8 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                                 boolean removed = input.readBoolean();
 
                                 if (removed) {
-
                                     mainThread.execute(() -> cache.updateValue(key, null));
                                 } else {
-
                                     Object value = typeRegistry.getTypeAdapter(key.getType()).read(input);
                                     mainThread.execute(() -> cache.updateValue((DataKey<Object>) key, value));
                                 }
@@ -326,7 +321,7 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
      */
 
     private void updatePlayers() {
-        /* SpaceDelta
+        /* SpaceDelta - No longer needed as payers are added and removed on subscription basis.
         Set<UUID> playersOnline;
         try {
             playersOnline = RedisBungee.getApi().getPlayersOnline();
@@ -404,8 +399,8 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                     "btlp",
                     CHANNEL_DATA_REQUEST,
                     DataBuffer.create()
-                            .write("message", Base64.getEncoder().encodeToString(data.toByteArray())
-                            ));
+                            .write("message", Base64.getEncoder().encodeToString(data.toByteArray()))
+            );
 
             // RedisBungee.getApi().sendChannelMessage(CHANNEL_DATA_REQUEST, Base64.getEncoder().encodeToString(data.toByteArray());
             redisBungeeAPIError = false;
