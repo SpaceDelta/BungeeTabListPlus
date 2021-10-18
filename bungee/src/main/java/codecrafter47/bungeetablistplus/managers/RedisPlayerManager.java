@@ -132,11 +132,15 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                     switch (type) {
                         case 1: // group_switch
                             if (dataBuffer.readOptionalString("from").isEmpty()) {
+
                                 // join
                                 RedisPlayer redisPlayer = new RedisPlayer(
                                         UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)),
                                         dataBuffer.readString(PlayerDataServiceImpl.ID_NAME)
                                 );
+
+                                if (byUUID.containsKey(redisPlayer.getUniqueID()))
+                                    return;
 
                                 byUUID.put(redisPlayer.getUniqueID(), redisPlayer);
                                 listeners.forEach(listener -> listener.onPlayerAdded(redisPlayer));
@@ -144,9 +148,9 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                             break;
                         case 2: // net leave
                             final RedisPlayer redisPlayer = byUUID.get(UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)));
-                            listeners.forEach(listener -> listener.onPlayerRemoved(redisPlayer));
+                            if (redisPlayer != null)
+                                listeners.forEach(listener -> listener.onPlayerRemoved(redisPlayer));
                             break;
-
                     }
 
                 });
