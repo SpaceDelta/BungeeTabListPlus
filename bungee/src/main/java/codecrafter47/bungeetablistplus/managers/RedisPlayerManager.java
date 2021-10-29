@@ -75,7 +75,7 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
 
     private final String thisServerId = TonyPlugin.INSTANCE.getLibrary().getEnvironment().getInstanceId(); // SpaceDelta
 
-    private final Map<UUID, RedisPlayer> byUUID = new ConcurrentHashMap<>();
+    private final Map<UUID, RedisPlayer> byUUID = new ConcurrentHashMap<>(); // only will hold network online players
     private final BungeePlayerProvider bungeePlayerProvider;
     private final BungeeTabListPlus plugin;
     private final EventExecutor mainThread;
@@ -139,17 +139,27 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
                                         dataBuffer.readString(PlayerDataServiceImpl.ID_NAME)
                                 );
 
-                                if (byUUID.containsKey(redisPlayer.getUniqueID()))
-                                    return;
+                                synchronized (byUUID) {
+                                    if (byUUID.containsKey(redisPlayer.getUniqueID())) {
+                                        System.out.println("dupe attempt reg" + redisPlayer.getName());
+                                        return;
+                                    }
 
-                                byUUID.put(redisPlayer.getUniqueID(), redisPlayer);
-                                listeners.forEach(listener -> listener.onPlayerAdded(redisPlayer));
+                                    byUUID.put(redisPlayer.getUniqueID(), redisPlayer);
+                                    listeners.forEach(listener -> listener.onPlayerAdded(redisPlayer));
+                                    System.out.println("reg " + redisPlayer.getName());
+                                }
                             }
                             break;
                         case 2: // net leave
-                            final RedisPlayer redisPlayer = byUUID.get(UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)));
-                            if (redisPlayer != null)
-                                listeners.forEach(listener -> listener.onPlayerRemoved(redisPlayer));
+                            synchronized (byUUID) {
+                                final RedisPlayer redisPlayer = byUUID.remove(UUID.fromString(dataBuffer.readString(PlayerDataServiceImpl.ID_UUID)));
+                                if (redisPlayer != null) {
+                                    listeners.forEach(listener -> listener.onPlayerRemoved(redisPlayer));
+                                    System.out.println("removing " + redisPlayer.getName());
+                                } else
+                                    System.out.println("can't remove " + dataBuffer.readOptionalString(PlayerDataServiceImpl.ID_NAME) + " as not exist");
+                            }
                             break;
                     }
 
